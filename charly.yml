@@ -1,7 +1,7 @@
 version: 2026.240.1943
 gst-wayland-display:
     candy:
-        version: 2026.241.1130
+        version: 2026.241.2200
         description: |
             Builds and installs the gst-wayland-display GStreamer plugin —
             `libgstwaylanddisplaysrc.so`, the `waylanddisplaysrc` element that IS the
@@ -42,7 +42,7 @@ gst-wayland-display:
                     - base-devel
         plan:
             - run: fetch the pinned gst-wayland-display fork tarball
-              download: "https://github.com/opencharly/gst-wayland-display/archive/11e0ec0d0c0fb8d44bbae99a46a84403ca715772.tar.gz"
+              download: "https://github.com/opencharly/gst-wayland-display/archive/d1bd382bce22395d0460e78c57313cc98ddc3877.tar.gz"
               extract: tar.gz
               to: /tmp/gwd-src
               run_as: root
@@ -52,7 +52,7 @@ gst-wayland-display:
                 # a build container, and the brace-default form that would guard them is
                 # the one charly reserves for its own runtime variables.
                 set -e
-                cd /tmp/gwd-src/gst-wayland-display-11e0ec0d0c0fb8d44bbae99a46a84403ca715772
+                cd /tmp/gwd-src/gst-wayland-display-d1bd382bce22395d0460e78c57313cc98ddc3877
                 cargo build --release -p gst-plugin-wayland-display
                 install -Dm755 target/release/libgstwaylanddisplaysrc.so \
                   /usr/lib/gstreamer-1.0/libgstwaylanddisplaysrc.so
