@@ -25,6 +25,7 @@ gst-wayland-display:
             - rust
             - gstreamer
             - gst-plugins-base
+            - gst-plugin-va
             - wayland
             - libinput
             - libxkbcommon
@@ -47,7 +48,10 @@ gst-wayland-display:
               run_as: root
             - run: build the plugin and install only the .so, then drop the build tree
               command: |
-                set -eu
+                # `set -e` WITHOUT `-u`: the two env vars below are legitimately unset in
+                # a build container, and the brace-default form that would guard them is
+                # the one charly reserves for its own runtime variables.
+                set -e
                 cd /tmp/gwd-src/gst-wayland-display-11e0ec0d0c0fb8d44bbae99a46a84403ca715772
                 cargo build --release -p gst-plugin-wayland-display
                 install -Dm755 target/release/libgstwaylanddisplaysrc.so \
@@ -74,6 +78,42 @@ gst-wayland-display:
                 - contains: xkb-layout
                 - contains: xkb-variant
                 - contains: xkb-options
+            - check: a waylanddisplaysrc pipeline negotiates DMABuf into vapostproc and reaches PLAYING
+              id: gwd-dmabuf-negotiates
+              exit_status: 0
+              context:
+                - runtime
+              command: |
+                # `set -e` WITHOUT `-u`: the two env vars below are legitimately unset in
+                # a build container, and the brace-default form that would guard them is
+                # the one charly reserves for its own runtime variables.
+                set -e
+                # The DMABuf caps filter is the load-bearing part. Without it the source
+                # may negotiate system memory and the whole chain silently becomes a CPU
+                # copy that still "works" -- so this asserts the zero-copy path itself,
+                # not merely that a pipeline ran.
+                # No brace-default syntax here: charly parses a dollar-brace in a
+                # command as its OWN runtime variable and, finding no binding, SKIPS
+                # the check. A skip reads as "not failed", so the gate would silently
+                # stop gating. Plain [ -z ] assignment avoids the brace form entirely.
+                if [ -z "$XDG_RUNTIME_DIR" ]; then XDG_RUNTIME_DIR=/tmp/gwd-gate-rt; fi
+                export XDG_RUNTIME_DIR
+                mkdir -p "$XDG_RUNTIME_DIR"; chmod 700 "$XDG_RUNTIME_DIR"
+                node="$CSTREAM_RENDER_NODE"
+                if [ -z "$node" ]; then node=/dev/dri/renderD128; fi
+                # A missing render node FAILS rather than skipping. cstream has no
+                # software fallback -- GWD creates zwp_linux_dmabuf_v1 only on the
+                # hardware path -- so an absent node is a configuration error, and a
+                # skip here would let the zero-copy claim go ungated.
+                if [ ! -e "$node" ]; then
+                    echo "GWD-DMABUF-FAIL: no render node at $node"; exit 1
+                fi
+                timeout 30 gst-launch-1.0 -q waylanddisplaysrc render-node="$node" num-buffers=30 \
+                  ! "video/x-raw(memory:DMABuf),width=1920,height=1080,framerate=60/1" \
+                  ! vapostproc ! fakesink
+                echo GWD-DMABUF-OK
+              stdout:
+                - contains: GWD-DMABUF-OK
             - check: the render-node property is present — the element never uses a software node
               id: gwd-render-node-property
               exit_status: 0
