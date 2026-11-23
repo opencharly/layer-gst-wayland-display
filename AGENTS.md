@@ -35,8 +35,11 @@ candy carries no `skill:` entity. The gap is recorded against
 - The candy's `plan:` `check:` steps are the functional evidence: the `.so` file
   check, the pinned-commit check, the `gst-inspect-1.0 waylanddisplaysrc`
   registration check, the three keymap-property checks, the DMABuf-negotiation
-  check, and the render-node, CUDA and Vulkan property checks. The
-  `check-gwd-layer` bed is the disposable build-scope run.
+  check, and the render-node, CUDA and Vulkan property checks. They run in a
+  build-scope container (`charly check box` on a box composing this layer), or in a
+  composing pod's bed — this repo declares no `disposable:` entity of its own, so the
+  runtime half (the DMABuf negotiation check) is proven where the element runs:
+  `pod-kde-cstream`'s bed.
 - The pinned fork commit appears **twice** — in the `download:` URL and in the
   extracted directory name — so a commit bump is a two-line change.
 
