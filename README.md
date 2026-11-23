@@ -11,9 +11,9 @@ device, and no DRM master.
 
 It is built from the [opencharly fork](https://github.com/opencharly/gst-wayland-display)
 at a pinned commit rather than from crates.io. The fork tracks upstream
-games-on-whales/stable and carries what upstream lacks: the
-`xkb-layout`/`xkb-variant`/`xkb-options` element properties and smooth-scroll axis
-support. It is built with the `cuda` feature (`cuda-device-id`, CUDAMemory into
+games-on-whales/stable and now adds no feature of its own: the
+`xkb-layout`/`xkb-variant`/`xkb-options` properties and the smooth-scroll axis support
+were dropped, and GstNavigation `MouseScroll` maps onto upstream's own wheel axis. It is built with the `cuda` feature (`cuda-device-id`, CUDAMemory into
 NVENC); libcuda comes from the host through CDI at runtime. The source is fetched
 at an immutable commit tarball, built with cargo, and only the resulting `.so` is
 installed — the build tree is removed in the same step.
@@ -43,7 +43,7 @@ Then, inside the built image:
 
 ```bash
 gst-inspect-1.0 waylanddisplaysrc   # registers the element
-gst-inspect-1.0 waylanddisplaysrc | grep xkb-layout
+gst-inspect-1.0 waylanddisplaysrc | grep cuda-device-id
 ```
 
 ## Layout

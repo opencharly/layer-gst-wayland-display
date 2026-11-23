@@ -10,10 +10,10 @@ gst-wayland-display:
 
             Built from the opencharly fork at a pinned commit rather than from crates.io.
             The fork tracks upstream games-on-whales/stable (Smithay, CUDA/NVENC and
-            Vulkan encode, HDR) and, beyond it, still carries its own
-            xkb-layout/variant/options element properties and smooth-scroll axis support;
-            dropping those and mapping GstNavigation MouseScroll onto upstream's wheel axis
-            is opencharly/gst-wayland-display#5, which moves this pin when it lands.
+            Vulkan encode, HDR). It carries NO fork-only feature any more: the xkb-*
+            properties and the smooth-scroll axis support were dropped and GstNavigation
+            MouseScroll now maps onto upstream's own wheel axis (opencharly/gst-wayland-display#12),
+            so the seat's keymap comes from libxkbcommon's XKB_DEFAULT_*.
 
             Built with the `cuda` feature, so on an NVIDIA render node the element
             hands CUDAMemory straight to NVENC (`cuda-device-id`). libcuda arrives at
