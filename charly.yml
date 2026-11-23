@@ -6,19 +6,26 @@ gst-wayland-display:
             Wayland parent for a nested compositor. The element embeds a Smithay
             compositor, creates `zwp_linux_dmabuf_v1` on a real DRM render node, and
             produces GStreamer buffers straight out of the compositor — which is what
-            lets a nested Hyprland run with no seat, no KMS device and no DRM master.
+            lets a nested compositor (KWin) run with no seat, no KMS device and no DRM master.
 
-            Built from the opencharly fork at a pinned commit rather than from crates.io:
-            the fork carries the resize sentinel fix (an unset `max_size` intersected to
-            `None`, so a resize silently snapped to 1280x720), the xkb-layout/variant/
-            options element properties, and smooth-scroll axis support. Upstream has
-            none of these.
+            Built from the opencharly fork at a pinned commit rather than from crates.io.
+            The fork tracks upstream games-on-whales/stable (Smithay, CUDA/NVENC and
+            Vulkan encode, HDR) and, beyond it, still carries its own
+            xkb-layout/variant/options element properties and smooth-scroll axis support;
+            dropping those and mapping GstNavigation MouseScroll onto upstream's wheel axis
+            is opencharly/gst-wayland-display#5, which moves this pin when it lands.
+
+            Built with the `cuda` feature, so on an NVIDIA render node the element
+            hands CUDAMemory straight to NVENC (`cuda-device-id`). libcuda arrives at
+            RUNTIME from the host through CDI -- nothing NVIDIA is baked in; the
+            build needs only gst-plugins-bad's CUDA library and the Vulkan headers
+            GStreamer's Vulkan API includes.
 
             The source is fetched at an immutable commit tarball, built with cargo, and
             only the resulting .so is installed — the build tree is removed in the same
             step. Every claim below is checkable in a disposable build-scope container:
             the plugin file exists, GStreamer loads it, the element is registered, and
-            the three keymap properties the streamer sets are present.
+            its render-node, CUDA and Vulkan properties are present.
         package:
             - rust
             - gstreamer
@@ -29,6 +36,22 @@ gst-wayland-display:
             - libxkbcommon
             - mesa
             - clang
+            # GStreamer's Vulkan API headers include vulkan/vulkan_core.h; the
+            # current GWD builds against them (measured: without the headers the
+            # wayland-display-core build script fails on gstvkapi.h).
+            - vulkan-headers
+            # The Vulkan RUNTIME the element uses: the loader, plus Mesa's radv (AMD) and anv
+            # (Intel) drivers. GWD converts RGBA to NV12/P010 with a Vulkan compute shader
+            # on the render node's own GPU, and serves `vulkan=true` VulkanImage output to the
+            # Vulkan encoders; without a driver for the node it measured
+            # "no usable Vulkan device matches DRM minor 129". NVIDIA's ICD is NOT installed
+            # here: it arrives with the driver through CDI (/etc/vulkan/icd.d/nvidia_icd.json).
+            - vulkan-icd-loader
+            - vulkan-radeon
+            - vulkan-intel
+            # gst-cuda-1.0, which the `cuda` feature links (pkg-config); libcuda
+            # itself is injected at runtime through CDI, never installed here.
+            - gst-plugins-bad-libs
             - pkgconf
             - curl
         distro:
@@ -40,20 +63,23 @@ gst-wayland-display:
                     - base-devel
         plan:
             - run: fetch the pinned gst-wayland-display fork tarball
-              download: "https://github.com/opencharly/gst-wayland-display/archive/d1bd382bce22395d0460e78c57313cc98ddc3877.tar.gz"
+              download: "https://github.com/opencharly/gst-wayland-display/archive/cda8b20fdb21b8ced7e653c2cda817e7a44d1258.tar.gz"
               extract: tar.gz
               to: /tmp/gwd-src
-              run_as: root
             - run: build the plugin and install only the .so, then drop the build tree
               command: |
                 # `set -e` WITHOUT `-u`: the two env vars below are legitimately unset in
                 # a build container, and the brace-default form that would guard them is
                 # the one charly reserves for its own runtime variables.
                 set -e
-                cd /tmp/gwd-src/gst-wayland-display-d1bd382bce22395d0460e78c57313cc98ddc3877
-                cargo build --release -p gst-plugin-wayland-display
+                cd /tmp/gwd-src/gst-wayland-display-cda8b20fdb21b8ced7e653c2cda817e7a44d1258
+                cargo build --release -p gst-plugin-wayland-display --features cuda
                 install -Dm755 target/release/libgstwaylanddisplaysrc.so \
                   /usr/lib/gstreamer-1.0/libgstwaylanddisplaysrc.so
+                # Provenance: the source tree is extracted as gst-wayland-display-<commit>, so
+                # the build records that commit and a bed run can PROVE which source it tested.
+                mkdir -p /usr/share/gst-wayland-display
+                basename "$(pwd)" | sed 's/^gst-wayland-display-//' > /usr/share/gst-wayland-display/BUILD_COMMIT
                 cd /
                 rm -rf /tmp/gwd-src ~/.cargo/registry ~/.cargo/git
               run_as: root
@@ -62,13 +88,19 @@ gst-wayland-display:
               file:
                 file: /usr/lib/gstreamer-1.0/libgstwaylanddisplaysrc.so
                 exists: true
+            - check: the image records the gst-wayland-display commit it was built from, and it is the PINNED one
+              id: gwd-build-commit
+              exit_status: 0
+              command: test "$(cat /usr/share/gst-wayland-display/BUILD_COMMIT)" = "cda8b20fdb21b8ced7e653c2cda817e7a44d1258" && echo GWD-COMMIT-PINNED
+              stdout:
+                - contains: GWD-COMMIT-PINNED
             - check: GStreamer loads the plugin and registers the waylanddisplaysrc element
               id: gwd-element-registered
               exit_status: 0
               command: gst-inspect-1.0 waylanddisplaysrc
               stdout:
                 - contains: "Wayland display source"
-            - check: the fork's keymap properties are present — the streamer sets all three
+            - check: the fork's keymap properties are present — the streamer sets all three (until opencharly/gst-wayland-display#5 drops them)
               id: gwd-keymap-properties
               exit_status: 0
               command: gst-inspect-1.0 waylanddisplaysrc
@@ -76,7 +108,7 @@ gst-wayland-display:
                 - contains: xkb-layout
                 - contains: xkb-variant
                 - contains: xkb-options
-            - check: a waylanddisplaysrc pipeline negotiates DMABuf into vapostproc and reaches PLAYING
+            - check: a waylanddisplaysrc pipeline negotiates DMABuf frames on the render node and completes
               id: gwd-dmabuf-negotiates
               exit_status: 0
               context:
@@ -97,8 +129,15 @@ gst-wayland-display:
                 if [ -z "$XDG_RUNTIME_DIR" ]; then XDG_RUNTIME_DIR=/tmp/gwd-gate-rt; fi
                 export XDG_RUNTIME_DIR
                 mkdir -p "$XDG_RUNTIME_DIR"; chmod 700 "$XDG_RUNTIME_DIR"
+                # The node rule cstream itself uses: the deployment's
+                # CSTREAM_RENDER_NODE, else charly's injected DRINODE. No literal
+                # default -- on a multi-GPU host a guess is the wrong card as often
+                # as the right one.
                 node="$CSTREAM_RENDER_NODE"
-                if [ -z "$node" ]; then node=/dev/dri/renderD128; fi
+                if [ -z "$node" ]; then node="$DRINODE"; fi
+                if [ -z "$node" ]; then
+                    echo "GWD-DMABUF-FAIL: neither CSTREAM_RENDER_NODE nor DRINODE names a render node"; exit 1
+                fi
                 # A missing render node FAILS rather than skipping. cstream has no
                 # software fallback -- GWD creates zwp_linux_dmabuf_v1 only on the
                 # hardware path -- so an absent node is a configuration error, and a
@@ -106,12 +145,35 @@ gst-wayland-display:
                 if [ ! -e "$node" ]; then
                     echo "GWD-DMABUF-FAIL: no render node at $node"; exit 1
                 fi
+                # GPU-agnostic: the zero-copy claim is that the element produces
+                # DMABuf frames on this node. What consumes them (vapostproc on VA,
+                # or CUDAMemory into NVENC on NVIDIA) is the streamer's choice.
                 timeout 30 gst-launch-1.0 -q waylanddisplaysrc render-node="$node" num-buffers=30 \
                   ! "video/x-raw(memory:DMABuf),width=1920,height=1080,framerate=60/1" \
-                  ! vapostproc ! fakesink
+                  ! fakesink
                 echo GWD-DMABUF-OK
               stdout:
                 - contains: GWD-DMABUF-OK
+            - check: the cuda-device-id property is present — the NVIDIA zero-copy path to NVENC is built in
+              id: gwd-cuda-device-id-property
+              exit_status: 0
+              command: gst-inspect-1.0 waylanddisplaysrc
+              stdout:
+                - contains: cuda-device-id
+            - check: the Vulkan properties are present — the VulkanImage output and the NV12/P010 compute conversion are built in
+              id: gwd-vulkan-property
+              exit_status: 0
+              command: gst-inspect-1.0 waylanddisplaysrc
+              stdout:
+                - contains: vulkan
+            - check: Mesa's Vulkan drivers are installed for AMD and Intel render nodes (NVIDIA's comes through CDI)
+              id: gwd-vulkan-mesa-icds
+              exit_status: 0
+              # Identified by the driver library each ICD manifest names, not by the manifest's
+              # file name, which differs across distros and Mesa versions (Arch: radeon_icd.json).
+              command: grep -qs libvulkan_radeon /usr/share/vulkan/icd.d/*.json && grep -qs libvulkan_intel /usr/share/vulkan/icd.d/*.json && echo MESA-VULKAN-OK
+              stdout:
+                - contains: MESA-VULKAN-OK
             - check: the render-node property is present — the element never uses a software node
               id: gwd-render-node-property
               exit_status: 0

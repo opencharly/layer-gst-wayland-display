@@ -16,10 +16,9 @@ Canonical files:
 
 ## Load these skills first (R0)
 
-- `/charly-distros:omarchy-cstream` — the closest owning skill: the streamed
-  Omarchy desktop whose transport spine this plugin is the Wayland parent for,
-  and the `wl_compositor` v6 / `zwp_linux_dmabuf_v1` constraint it clears. Load
-  before editing or troubleshooting the layer.
+- `/charly-selkies:kde-cstream` — the closest owning skill: pod-kde-cstream, the
+  streamed KDE desktop whose transport spine this element is the Wayland parent
+  for, and whose beds are the R10 gate for a change here.
 - `/charly-image:layer` — the candy authoring reference (`charly.yml` schema,
   `plan:` step verbs incl. `check:`, per-distro `distro:` arms, package
   sections). Load before editing any entity field or plan step.
@@ -34,9 +33,10 @@ candy carries no `skill:` entity. The gap is recorded against
   `validate / validate`, defined in `opencharly/.github`); this repo has **no
   per-repo candy gate** and ships only `.github/workflows/tag-on-merge.yml`.
 - The candy's `plan:` `check:` steps are the functional evidence: the `.so` file
-  check, the `gst-inspect-1.0 waylanddisplaysrc` registration check, the three
-  keymap-property checks, the DMABuf-negotiation check, and the render-node
-  property check. The `check-gwd-layer` bed is the disposable build-scope run.
+  check, the pinned-commit check, the `gst-inspect-1.0 waylanddisplaysrc`
+  registration check, the three keymap-property checks, the DMABuf-negotiation
+  check, and the render-node, CUDA and Vulkan property checks. The
+  `check-gwd-layer` bed is the disposable build-scope run.
 - The pinned fork commit appears **twice** — in the `download:` URL and in the
   extracted directory name — so a commit bump is a two-line change.
 

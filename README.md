@@ -6,12 +6,15 @@ acts as the Wayland parent for a nested compositor.
 This candy builds and installs `libgstwaylanddisplaysrc.so`. The element embeds a
 Smithay compositor, creates `zwp_linux_dmabuf_v1` on a real DRM render node, and
 produces GStreamer buffers straight out of the compositor — which is what lets a
-nested Hyprland run with no seat, no KMS device, and no DRM master.
+nested desktop compositor (KWin, in pod-kde-cstream) run with no seat, no KMS
+device, and no DRM master.
 
 It is built from the [opencharly fork](https://github.com/opencharly/gst-wayland-display)
-at a pinned commit rather than from crates.io: the fork carries the resize
-sentinel fix, the `xkb-layout`/`xkb-variant`/`xkb-options` element properties,
-and smooth-scroll axis support. Upstream has none of these. The source is fetched
+at a pinned commit rather than from crates.io. The fork tracks upstream
+games-on-whales/stable and carries what upstream lacks: the
+`xkb-layout`/`xkb-variant`/`xkb-options` element properties and smooth-scroll axis
+support. It is built with the `cuda` feature (`cuda-device-id`, CUDAMemory into
+NVENC); libcuda comes from the host through CDI at runtime. The source is fetched
 at an immutable commit tarball, built with cargo, and only the resulting `.so` is
 installed — the build tree is removed in the same step.
 
@@ -52,7 +55,7 @@ gst-inspect-1.0 waylanddisplaysrc | grep xkb-layout
 
 ## Related
 
-- Family skill: `/charly-distros:omarchy-cstream` — the streamed desktop whose
+- Family skill: `/charly-selkies:kde-cstream` — the streamed desktop whose
   transport spine this plugin is the Wayland parent for (this candy carries no
   `skill:` entity of its own)
 - `/charly-selkies:selkies` — the other browser-desktop transport
