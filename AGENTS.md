@@ -34,14 +34,17 @@ candy carries no `skill:` entity. The gap is recorded against
   per-repo candy gate** and ships only `.github/workflows/tag-on-merge.yml`.
 - The candy's `plan:` `check:` steps are the functional evidence: the `.so` file
   check, the pinned-commit check, the `gst-inspect-1.0 waylanddisplaysrc`
-  registration check, the three keymap-property checks, the DMABuf-negotiation
-  check, and the render-node, CUDA and Vulkan property checks. They run in a
+  registration check, the DMABuf-negotiation check, and the render-node, CUDA and
+  Vulkan property checks. They run in a
   build-scope container (`charly check box` on a box composing this layer), or in a
   composing pod's bed — this repo declares no `disposable:` entity of its own, so the
   runtime half (the DMABuf negotiation check) is proven where the element runs:
   `pod-kde-cstream`'s bed.
-- The pinned fork commit appears **twice** — in the `download:` URL and in the
-  extracted directory name — so a commit bump is a two-line change.
+- The pinned fork commit appears **three times** — in the `download:` URL, in the
+  extracted directory name the build enters, and in the `gwd-build-commit` check that
+  asserts the recorded `BUILD_COMMIT` equals it — so a commit bump is a three-line
+  change, and any two of the three moving without the third is a broken build or a
+  false provenance.
 
 ## Modify this repo
 
