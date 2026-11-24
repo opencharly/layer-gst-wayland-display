@@ -63,7 +63,7 @@ gst-wayland-display:
                     - base-devel
         plan:
             - run: fetch the pinned gst-wayland-display fork tarball
-              download: "https://github.com/opencharly/gst-wayland-display/archive/64a6f4f93de08431da5cf2cf5b39e12bf74d576d.tar.gz"
+              download: "https://github.com/opencharly/gst-wayland-display/archive/c5fe3a0356be850095763ffce0632dae0ea88968.tar.gz"
               extract: tar.gz
               to: /tmp/gwd-src
             - run: build the plugin and install only the .so, then drop the build tree
@@ -72,7 +72,7 @@ gst-wayland-display:
                 # a build container, and the brace-default form that would guard them is
                 # the one charly reserves for its own runtime variables.
                 set -e
-                cd /tmp/gwd-src/gst-wayland-display-64a6f4f93de08431da5cf2cf5b39e12bf74d576d
+                cd /tmp/gwd-src/gst-wayland-display-c5fe3a0356be850095763ffce0632dae0ea88968
                 cargo build --release -p gst-plugin-wayland-display --features cuda
                 install -Dm755 target/release/libgstwaylanddisplaysrc.so \
                   /usr/lib/gstreamer-1.0/libgstwaylanddisplaysrc.so
@@ -91,7 +91,7 @@ gst-wayland-display:
             - check: the image records the gst-wayland-display commit it was built from, and it is the PINNED one
               id: gwd-build-commit
               exit_status: 0
-              command: test "$(cat /usr/share/gst-wayland-display/BUILD_COMMIT)" = "64a6f4f93de08431da5cf2cf5b39e12bf74d576d" && echo GWD-COMMIT-PINNED
+              command: test "$(cat /usr/share/gst-wayland-display/BUILD_COMMIT)" = "c5fe3a0356be850095763ffce0632dae0ea88968" && echo GWD-COMMIT-PINNED
               stdout:
                 - contains: GWD-COMMIT-PINNED
             - check: GStreamer loads the plugin and registers the waylanddisplaysrc element
